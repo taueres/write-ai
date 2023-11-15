@@ -1,16 +1,18 @@
 import React, { useCallback, useReducer, useEffect } from 'react';
 import debounce from 'lodash.debounce';
-import { getSuggestion } from './ai.js';
+import { getSuggestion, clearPassword } from './ai.js';
 
 const x = React.createElement.bind(React);
 
 const ACTION_ON_CHANGE = 'ON_CHANGE';
 const ACTION_ON_SUGGEST = 'ON_SUGGEST';
 const ACTION_ON_ACCEPT = 'ON_ACCEPT';
+const ACTION_ON_ERROR = 'ON_ERROR';
 
 const INITIAL_STATE = {
     inputText: '',
     suggestText: '',
+    error: null,
 };
 
 const reducer = (state, action) => {
@@ -32,6 +34,12 @@ const reducer = (state, action) => {
                 ...state,
                 inputText: state.inputText + ' ' + state.suggestText,
             }
+        }
+        case ACTION_ON_ERROR: {
+            return {
+                ...state,
+                error: action.payload.value,
+            };
         }
         default:
             return state;
@@ -56,13 +64,24 @@ export const App = () => {
                 if (text === '') {
                     return;
                 }
-                const suggested = await getSuggestion(text);
-                dispatch({
-                    type: ACTION_ON_SUGGEST,
-                    payload: {
-                        value: suggested,
-                    },
-                });
+
+                try {
+                    const suggested = await getSuggestion(text);
+                    dispatch({
+                        type: ACTION_ON_SUGGEST,
+                        payload: {
+                            value: suggested,
+                        },
+                    });
+                } catch(error) {
+                    clearPassword();
+                    dispatch({
+                        type: ACTION_ON_ERROR,
+                        payload: {
+                            value: error.message,
+                        },
+                    });
+                }
             },
             1000
         ), []);
@@ -70,6 +89,15 @@ export const App = () => {
     useEffect(() => requestSuggestion(state.inputText), [state.inputText]);
 
     const onAccept = useCallback(() => dispatch({ type: ACTION_ON_ACCEPT }), []);
+
+    if (state.error) {
+        return x(
+            "div",
+            { className: 'error-box' },
+            'Error: ',
+            state.error
+        );
+    }
 
     return x(
         'div',

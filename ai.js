@@ -74,3 +74,7 @@ ${text}`
 
     return raw;
 }
+
+export const clearPassword = () => {
+    window.localStorage.removeItem(STORAGE_KEY);
+};
